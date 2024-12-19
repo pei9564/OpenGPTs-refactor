@@ -1,0 +1,14 @@
+# FROM migrate/migrate
+# COPY backend/migrations /migrations
+
+# 使用多階段構建
+FROM python:3.11 as builder
+
+# 複製 migrations 檔案
+COPY backend/migrations /migrations
+
+# 最終階段
+FROM migrate/migrate
+
+# 從 builder 階段複製 migrations
+COPY --from=builder /migrations /migrations
