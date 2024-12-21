@@ -13,20 +13,20 @@ RUN yarn install --frozen-lockfile
 COPY frontend/ ./
 
 # Build the application
-RUN yarn build
+# RUN yarn build
 
 # Runtime stage
-FROM node:20-slim
+# FROM node:20-slim
 
-WORKDIR /app
+# WORKDIR /app
 
 # Copy built assets from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+# COPY --from=builder /app/dist ./dist
+# COPY --from=builder /app/node_modules ./node_modules
+# COPY --from=builder /app/package.json ./
 
 # Expose the port
 EXPOSE 5173
 
 # Start the application
-CMD ["yarn", "preview", "--host", "0.0.0.0"] 
+CMD ["yarn", "dev", "--host", "0.0.0.0"] 

@@ -29,6 +29,19 @@ services:
       - .env
     command: ["-path", "/migrations", "-database", "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable", "up"]
 
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+
   backend:
     container_name: opengpts-backend
     build:
@@ -40,12 +53,16 @@ services:
     depends_on:
       postgres-setup:
         condition: service_completed_successfully
+      ollama:
+        condition: service_started
     env_file:
       - .env
     # volumes:
     #   - ./backend:/backend
     environment:
       POSTGRES_HOST: "postgres"
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_MODEL: "llama3.2:1b"
     command:
       - --reload
 
@@ -64,6 +81,8 @@ services:
       - "5173:5173" # Frontend is accessible on localhost:5173
     environment:
       VITE_BACKEND_URL: "http://backend:8000"
+      # VITE_BACKEND_URL: "http://localhost:8100"
 
 volumes:
   postgres_data:  # 定義 Docker volume
+  ollama:  # Add this line
