@@ -20,38 +20,18 @@ from app.retrieval import get_retrieval_executor
 from app.tools import (
     RETRIEVAL_DESCRIPTION,
     TOOLS,
-    ActionServer,
-    Arxiv,
     AvailableTools,
     Connery,
-    DallE,
-    DDGSearch,
-    PressReleases,
-    PubMed,
     Retrieval,
-    SecFilings,
-    Tavily,
-    TavilyAnswer,
     Wikipedia,
-    YouSearch,
     get_retrieval_tool,
     get_retriever,
 )
 
 Tool = Union[
-    ActionServer,
     Connery,
-    DDGSearch,
-    Arxiv,
-    YouSearch,
-    SecFilings,
-    PressReleases,
-    PubMed,
     Wikipedia,
-    Tavily,
-    TavilyAnswer,
     Retrieval,
-    DallE,
 ]
 
 
