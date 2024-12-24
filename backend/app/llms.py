@@ -1,9 +1,5 @@
 import os
 from functools import lru_cache
-from urllib.parse import urlparse
-
-import boto3
-import httpx
 import structlog
 from langchain_community.chat_models.ollama import ChatOllama
 

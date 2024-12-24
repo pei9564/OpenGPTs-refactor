@@ -12,7 +12,6 @@ from langgraph.graph.message import Messages
 from langgraph.pregel import Pregel
 
 from app.agent_types.tools_agent import get_tools_agent_executor
-from app.agent_types.xml_agent import get_xml_agent_executor
 from app.chatbot import get_chatbot_executor
 from app.checkpoint import PostgresCheckpoint
 from app.llms import get_ollama_llm
@@ -21,7 +20,6 @@ from app.tools import (
     RETRIEVAL_DESCRIPTION,
     TOOLS,
     AvailableTools,
-    Connery,
     Retrieval,
     Wikipedia,
     get_retrieval_tool,
@@ -29,7 +27,6 @@ from app.tools import (
 )
 
 Tool = Union[
-    Connery,
     Wikipedia,
     Retrieval,
 ]

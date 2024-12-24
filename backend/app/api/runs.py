@@ -4,7 +4,7 @@ from uuid import UUID
 import langsmith.client
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.exceptions import RequestValidationError
-from langchain.pydantic_v1 import ValidationError
+from pydantic import ValidationError
 from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
 from langsmith.utils import tracing_is_enabled
@@ -13,7 +13,7 @@ from sse_starlette import EventSourceResponse
 
 from app.agent import agent
 from app.auth.handlers import AuthedUser
-from app.storage import get_assistant, get_thread
+import app.storage as storage
 from app.stream import astream_state, to_sse
 
 router = APIRouter()
@@ -30,11 +30,11 @@ class CreateRunPayload(BaseModel):
 
 
 async def _run_input_and_config(payload: CreateRunPayload, user_id: str):
-    thread = await get_thread(user_id, payload.thread_id)
+    thread = await storage.get_thread(user_id, payload.thread_id)
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    assistant = await get_assistant(user_id, str(thread["assistant_id"]))
+    assistant = await storage.get_assistant(user_id, str(thread["assistant_id"]))
     if not assistant:
         raise HTTPException(status_code=404, detail="Assistant not found")
 
