@@ -41,22 +41,6 @@ DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant."
 CHECKPOINTER = PostgresCheckpoint(serde=pickle, at=CheckpointAt.END_OF_STEP)
 
 
-def get_agent_executor(
-    tools: list,
-    agent: AgentType,
-    system_message: str,
-    interrupt_before_action: bool,
-):
-    if agent == AgentType.OLLAMA:
-        llm = get_ollama_llm()
-        return get_tools_agent_executor(
-            tools, llm, system_message, interrupt_before_action, CHECKPOINTER
-        )
-
-    else:
-        raise ValueError("Unexpected agent type")
-
-
 class ConfigurableAgent(RunnableBinding):
     tools: Sequence[Tool]
     agent: AgentType
@@ -99,7 +83,9 @@ class ConfigurableAgent(RunnableBinding):
                     _tools.extend(_returned_tools)
                 else:
                     _tools.append(_returned_tools)
-        _agent = get_agent_executor(
+
+        agent = get_ollama_llm()
+        _agent = get_tools_agent_executor(
             _tools, agent, system_message, interrupt_before_action
         )
         agent_executor = _agent.with_config({"recursion_limit": 50})
@@ -117,18 +103,6 @@ class ConfigurableAgent(RunnableBinding):
 class LLMType(str, Enum):
     OLLAMA = "Ollama"
 
-
-def get_chatbot(
-    llm_type: LLMType,
-    system_message: str,
-):
-    if llm_type == LLMType.OLLAMA:
-        llm = get_ollama_llm()
-    else:
-        raise ValueError("Unexpected llm type")
-    return get_chatbot_executor(llm, system_message, CHECKPOINTER)
-
-
 class ConfigurableChatBot(RunnableBinding):
     llm: LLMType
     system_message: str = DEFAULT_SYSTEM_MESSAGE
@@ -145,7 +119,9 @@ class ConfigurableChatBot(RunnableBinding):
     ) -> None:
         others.pop("bound", None)
 
-        chatbot = get_chatbot(llm, system_message)
+        llm = get_ollama_llm()
+        chatbot = get_chatbot_executor(llm, system_message, CHECKPOINTER)
+
         super().__init__(
             llm=llm,
             system_message=system_message,
@@ -188,10 +164,7 @@ class ConfigurableRetrieval(RunnableBinding):
     ) -> None:
         others.pop("bound", None)
         retriever = get_retriever(assistant_id, thread_id)
-        if llm_type == LLMType.OLLAMA:
-            llm = get_ollama_llm()
-        else:
-            raise ValueError("Unexpected llm type")
+        llm = get_ollama_llm()
         chatbot = get_retrieval_executor(llm, retriever, system_message, CHECKPOINTER)
         super().__init__(
             llm_type=llm_type,
