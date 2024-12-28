@@ -38,98 +38,90 @@ DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant."
 
 CHECKPOINTER = PostgresCheckpoint(serde=pickle, at=CheckpointAt.END_OF_STEP)
 
-
-class ConfigurableAgent(RunnableBinding):
-    tools: Sequence[Tool]
-    agent: LLMType
+class ConfigurableSystem(RunnableBinding):
+    mode: str
+    llm_type: LLMType = LLMType.OLLAMA
     system_message: str = DEFAULT_SYSTEM_MESSAGE
-    retrieval_description: str = RETRIEVAL_DESCRIPTION
-    interrupt_before_action: bool = False
     assistant_id: Optional[str] = None
     thread_id: Optional[str] = None
+    tools: Optional[Sequence[Tool]] = None
+    interrupt_before_action: bool = False
+    retrieval_description: str = RETRIEVAL_DESCRIPTION
     user_id: Optional[str] = None
 
     def __init__(
         self,
         *,
-        tools: Sequence[Tool],
-        agent: LLMType = LLMType.OLLAMA,
+        mode: str = "agent",
+        llm_type: LLMType = LLMType.OLLAMA,
         system_message: str = DEFAULT_SYSTEM_MESSAGE,
         assistant_id: Optional[str] = None,
         thread_id: Optional[str] = None,
-        retrieval_description: str = RETRIEVAL_DESCRIPTION,
+        user_id: Optional[str] = None,
+        tools: Optional[Sequence[Tool]] = None,
         interrupt_before_action: bool = False,
+        retrieval_description: str = RETRIEVAL_DESCRIPTION,
         kwargs: Optional[Mapping[str, Any]] = None,
         config: Optional[Mapping[str, Any]] = None,
         **others: Any,
     ) -> None:
         others.pop("bound", None)
-        _tools = []
-        for _tool in tools:
-            if _tool["type"] == AvailableTools.RETRIEVAL:
-                if assistant_id is None or thread_id is None:
-                    raise ValueError(
-                        "Both assistant_id and thread_id must be provided if Retrieval tool is used"
+
+        llm = get_ollama_llm() 
+
+        if mode == "chatbot":
+            executor = get_chatbot_executor(llm, system_message, CHECKPOINTER)
+            
+        elif mode == "retrieval":
+            retriever = get_retriever(assistant_id, thread_id)
+            executor = get_retrieval_executor(llm, retriever, system_message, CHECKPOINTER)
+
+        elif mode == "agent":
+            _tools = []
+            if tools:
+                for _tool in tools:
+                    if _tool["type"] == AvailableTools.RETRIEVAL:
+                        if assistant_id is None or thread_id is None:
+                            raise ValueError(
+                                "Both assistant_id and thread_id must be provided if Retrieval tool is used"
+                            )
+                    _tools.append(
+                        get_retrieval_tool(assistant_id, thread_id, retrieval_description)
                     )
-                _tools.append(
-                    get_retrieval_tool(assistant_id, thread_id, retrieval_description)
-                )
-            else:
-                tool_config = _tool.get("config", {})
-                _returned_tools = TOOLS[_tool["type"]](**tool_config)
-                if isinstance(_returned_tools, list):
-                    _tools.extend(_returned_tools)
                 else:
-                    _tools.append(_returned_tools)
+                    tool_config = _tool.get("config", {})
+                    _returned_tools = TOOLS[_tool["type"]](**tool_config)
+                    if isinstance(_returned_tools, list):
+                        _tools.extend(_returned_tools)
+                    else:
+                        _tools.append(_returned_tools)
 
-        llm_model = get_ollama_llm()
-        _agent = get_tools_agent_executor(
-            _tools, llm_model, system_message, interrupt_before_action, CHECKPOINTER
-        )
-        agent_executor = _agent.with_config({"recursion_limit": 50})
+            agent_executor = get_tools_agent_executor(
+                _tools, llm, system_message, interrupt_before_action, CHECKPOINTER
+            )
+            executor = agent_executor.with_config({"recursion_limit": 50})
+        else:
+            raise ValueError("Invalid mode. Must be one of: 'chatbot', 'retrieval', 'agent'")
+
         super().__init__(
+            mode=mode,
+            llm_type=llm_type,
+            system_message=system_message,
+            assistant_id=assistant_id,
+            thread_id=thread_id,
             tools=tools,
-            agent=agent,
-            system_message=system_message,
+            interrupt_before_action=interrupt_before_action,
             retrieval_description=retrieval_description,
-            bound=agent_executor,
-            kwargs=kwargs or {},
-            config=config or {},
-        )
-
-
-class ConfigurableChatBot(RunnableBinding):
-    llm: LLMType
-    system_message: str = DEFAULT_SYSTEM_MESSAGE
-    user_id: Optional[str] = None
-
-    def __init__(
-        self,
-        *,
-        llm: LLMType = LLMType.OLLAMA,
-        system_message: str = DEFAULT_SYSTEM_MESSAGE,
-        kwargs: Optional[Mapping[str, Any]] = None,
-        config: Optional[Mapping[str, Any]] = None,
-        **others: Any,
-    ) -> None:
-        others.pop("bound", None)
-
-        llm_model = get_ollama_llm()
-        chatbot = get_chatbot_executor(llm_model, system_message, CHECKPOINTER)
-
-        super().__init__(
-            llm=llm,
-            system_message=system_message,
-            bound=chatbot,
+            bound=executor,
             kwargs=kwargs or {},
             config=config or {},
         )
 
 
 chatbot = (
-    ConfigurableChatBot(llm=LLMType.OLLAMA, checkpoint=CHECKPOINTER)
+    ConfigurableSystem(mode="chatbot", llm_type=LLMType.OLLAMA, checkpoint=CHECKPOINTER)
     .configurable_fields(
-        llm=ConfigurableField(id="llm_type", name="LLM Type"),
+        # llm_type=ConfigurableField(id="llm_type", name="LLM Type"),
         system_message=ConfigurableField(id="system_message", name="Instructions"),
     )
     .with_types(
@@ -139,41 +131,10 @@ chatbot = (
 )
 
 
-class ConfigurableRetrieval(RunnableBinding):
-    llm_type: LLMType
-    system_message: str = DEFAULT_SYSTEM_MESSAGE
-    assistant_id: Optional[str] = None
-    thread_id: Optional[str] = None
-    user_id: Optional[str] = None
-
-    def __init__(
-        self,
-        *,
-        llm_type: LLMType = LLMType.OLLAMA,
-        system_message: str = DEFAULT_SYSTEM_MESSAGE,
-        assistant_id: Optional[str] = None,
-        thread_id: Optional[str] = None,
-        kwargs: Optional[Mapping[str, Any]] = None,
-        config: Optional[Mapping[str, Any]] = None,
-        **others: Any,
-    ) -> None:
-        others.pop("bound", None)
-        retriever = get_retriever(assistant_id, thread_id)
-        llm_model = get_ollama_llm()
-        chatbot = get_retrieval_executor(llm_model, retriever, system_message, CHECKPOINTER)
-        super().__init__(
-            llm_type=llm_type,
-            system_message=system_message,
-            bound=chatbot,
-            kwargs=kwargs or {},
-            config=config or {},
-        )
-
-
 chat_retrieval = (
-    ConfigurableRetrieval(llm_type=LLMType.OLLAMA, checkpoint=CHECKPOINTER)
+    ConfigurableSystem(mode="retrieval", llm_type=LLMType.OLLAMA, checkpoint=CHECKPOINTER)
     .configurable_fields(
-        llm_type=ConfigurableField(id="llm_type", name="LLM Type"),
+        # llm_type=ConfigurableField(id="llm_type", name="LLM Type"),
         system_message=ConfigurableField(id="system_message", name="Instructions"),
         assistant_id=ConfigurableField(
             id="assistant_id", name="Assistant ID", is_shared=True
@@ -188,8 +149,9 @@ chat_retrieval = (
 
 
 agent: Pregel = (
-    ConfigurableAgent(
-        agent=LLMType.OLLAMA,
+    ConfigurableSystem(
+        mode="agent",
+        llm_type=LLMType.OLLAMA,
         tools=[],
         system_message=DEFAULT_SYSTEM_MESSAGE,
         retrieval_description=RETRIEVAL_DESCRIPTION,
@@ -197,13 +159,13 @@ agent: Pregel = (
         thread_id=None,
     )
     .configurable_fields(
-        agent=ConfigurableField(id="agent_type", name="Agent Type"),
+        # llm_type=ConfigurableField(id="agent_type", name="Agent Type"),
         system_message=ConfigurableField(id="system_message", name="Instructions"),
-        interrupt_before_action=ConfigurableField(
-            id="interrupt_before_action",
-            name="Tool Confirmation",
-            description="If Yes, you'll be prompted to continue before each tool is executed.\nIf No, tools will be executed automatically by the agent.",
-        ),
+        # interrupt_before_action=ConfigurableField(
+        #     id="interrupt_before_action",
+        #     name="Tool Confirmation",
+        #     description="If Yes, you'll be prompted to continue before each tool is executed.\nIf No, tools will be executed automatically by the agent.",
+        # ),
         assistant_id=ConfigurableField(
             id="assistant_id", name="Assistant ID", is_shared=True
         ),

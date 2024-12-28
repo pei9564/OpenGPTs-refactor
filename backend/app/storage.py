@@ -9,6 +9,7 @@ from app.lifespan import get_pg_pool
 from app.schema import Assistant, Thread, User
 
 
+### Assistants
 async def list_assistants(user_id: str) -> List[Assistant]:
     """List all assistants for the current user."""
     async with get_pg_pool().acquire() as conn:
@@ -86,6 +87,7 @@ async def delete_assistant(user_id: str, assistant_id: str) -> None:
         )
 
 
+### Threads
 async def list_threads(user_id: str) -> List[Thread]:
     """List all threads for the current user."""
     async with get_pg_pool().acquire() as conn:
@@ -209,6 +211,7 @@ async def delete_thread(user_id: str, thread_id: str):
         )
 
 
+### Users
 async def get_or_create_user(sub: str) -> tuple[User, bool]:
     """Returns a tuple of the user and a boolean indicating whether the user was created."""
     async with get_pg_pool().acquire() as conn:

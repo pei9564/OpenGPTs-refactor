@@ -45,11 +45,10 @@ services:
   backend:
     container_name: opengpts-backend
     build:
-      # context: backend  # 限制了只能訪問 backend 目錄
-      context: .  # 可以訪問整個專案目錄
+      context: . 
       dockerfile: Dockerfile.backend
     ports:
-      - "8100:8000" # Backend is accessible on localhost:8100
+      - "8100:8000" 
     depends_on:
       postgres-setup:
         condition: service_completed_successfully
@@ -69,7 +68,6 @@ services:
   frontend:
     container_name: opengpts-frontend
     build:
-      # context: frontend
       context: .
       dockerfile: Dockerfile.frontend
     depends_on:
@@ -78,11 +76,10 @@ services:
     # volumes:
     #   - ./frontend/src:/frontend/src
     ports:
-      - "5173:5173" # Frontend is accessible on localhost:5173
+      - "5173:5173" 
     environment:
       VITE_BACKEND_URL: "http://backend:8000"
-      # VITE_BACKEND_URL: "http://localhost:8100"
 
 volumes:
   postgres_data:  # 定義 Docker volume
-  ollama:  # Add this line
+  ollama: 

@@ -40,7 +40,7 @@ class CustomChatOllama(ChatOllama):
     
     def convert_to_ollama_tool(self, tool: Any) -> Dict:
         """Convert a tool to an Ollama tool."""
-        def __is_pydantic_class(self,obj: Any) -> bool:
+        def __is_pydantic_class(obj: Any) -> bool:
             return isinstance(obj, type) and (
                 issubclass(obj, BaseModel) or BaseModel in obj.__bases__
             )
@@ -53,7 +53,6 @@ class CustomChatOllama(ChatOllama):
             return definition
         
         elif isinstance(tool, BaseTool):
-            # Handle BaseTool instances
             schema = tool.args_schema.schema() if tool.args_schema else {"properties": {}}
             return {
                 "name": tool.name,
