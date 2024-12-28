@@ -40,6 +40,7 @@ services:
       resources:
         limits:
           memory: 8G
+    # command: ["ollama", "run", "$OLLAMA_MODEL"]
 
 
   backend:
@@ -60,8 +61,7 @@ services:
     #   - ./backend:/backend
     environment:
       POSTGRES_HOST: "postgres"
-      OLLAMA_BASE_URL: "http://ollama:11434"
-      OLLAMA_MODEL: "llama3.2:1b"
+
     command:
       - --reload
 
