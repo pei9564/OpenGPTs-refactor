@@ -4,7 +4,7 @@ postgres-volume/
 redis-volume/
 backend/ui
 embed/*
-
+backend/cache/*
 # Operating System generated files
 .DS_Store
 Thumbs.db

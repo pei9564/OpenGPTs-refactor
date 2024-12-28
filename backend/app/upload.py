@@ -22,7 +22,7 @@ from langchain_core.runnables import (
     RunnableSerializable,
 )
 from langchain_core.vectorstores import VectorStore
-from langchain_openai import AzureOpenAIEmbeddings, OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter
 
 from app.ingest import ingest_blob
@@ -82,28 +82,12 @@ def convert_ingestion_input_to_blob(file: UploadFile) -> Blob:
     )
 
 
-def _determine_azure_or_openai_embeddings() -> PGVector:
-    if os.environ.get("OPENAI_API_KEY"):
-        return PGVector(
-            connection_string=PG_CONNECTION_STRING,
-            embedding_function=OpenAIEmbeddings(),
-            use_jsonb=True,
-        )
-    if os.environ.get("AZURE_OPENAI_API_KEY"):
-        return PGVector(
-            connection_string=PG_CONNECTION_STRING,
-            embedding_function=AzureOpenAIEmbeddings(
-                azure_endpoint=os.environ.get("AZURE_OPENAI_API_BASE"),
-                azure_deployment=os.environ.get(
-                    "AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_NAME"
-                ),
-                openai_api_version=os.environ.get("AZURE_OPENAI_API_VERSION"),
-            ),
-            use_jsonb=True,
-        )
-    raise ValueError(
-        "Either OPENAI_API_KEY or AZURE_OPENAI_API_KEY needs to be set for embeddings to work."
-    )
+def _init_vectorstore() -> PGVector:
+    return PGVector(
+             connection_string=PG_CONNECTION_STRING,
+             embedding_function=HuggingFaceEmbeddings(model_name="DMetaSoul/Dmeta-embedding-zh", cache_folder="./cache"),
+             use_jsonb=True,
+         )
 
 
 class IngestRunnable(RunnableSerializable[BinaryIO, List[str]]):
@@ -152,7 +136,7 @@ PG_CONNECTION_STRING = PGVector.connection_string_from_db_params(
     user=os.environ["POSTGRES_USER"],
     password=os.environ["POSTGRES_PASSWORD"],
 )
-vstore = _determine_azure_or_openai_embeddings()
+vstore = _init_vectorstore()
 
 
 ingest_runnable = IngestRunnable(
