@@ -31,10 +31,8 @@ Tool = Union[
     Retrieval,
 ]
 
-
-class AgentType(str, Enum):
+class LLMType(str, Enum):
     OLLAMA = "Ollama"
-
 
 DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant."
 
@@ -43,7 +41,7 @@ CHECKPOINTER = PostgresCheckpoint(serde=pickle, at=CheckpointAt.END_OF_STEP)
 
 class ConfigurableAgent(RunnableBinding):
     tools: Sequence[Tool]
-    agent: AgentType
+    agent: LLMType
     system_message: str = DEFAULT_SYSTEM_MESSAGE
     retrieval_description: str = RETRIEVAL_DESCRIPTION
     interrupt_before_action: bool = False
@@ -55,7 +53,7 @@ class ConfigurableAgent(RunnableBinding):
         self,
         *,
         tools: Sequence[Tool],
-        agent: AgentType = AgentType.OLLAMA,
+        agent: LLMType = LLMType.OLLAMA,
         system_message: str = DEFAULT_SYSTEM_MESSAGE,
         assistant_id: Optional[str] = None,
         thread_id: Optional[str] = None,
@@ -84,9 +82,9 @@ class ConfigurableAgent(RunnableBinding):
                 else:
                     _tools.append(_returned_tools)
 
-        agent = get_ollama_llm()
+        llm_model = get_ollama_llm()
         _agent = get_tools_agent_executor(
-            _tools, agent, system_message, interrupt_before_action
+            _tools, llm_model, system_message, interrupt_before_action, CHECKPOINTER
         )
         agent_executor = _agent.with_config({"recursion_limit": 50})
         super().__init__(
@@ -99,9 +97,6 @@ class ConfigurableAgent(RunnableBinding):
             config=config or {},
         )
 
-
-class LLMType(str, Enum):
-    OLLAMA = "Ollama"
 
 class ConfigurableChatBot(RunnableBinding):
     llm: LLMType
@@ -119,8 +114,8 @@ class ConfigurableChatBot(RunnableBinding):
     ) -> None:
         others.pop("bound", None)
 
-        llm = get_ollama_llm()
-        chatbot = get_chatbot_executor(llm, system_message, CHECKPOINTER)
+        llm_model = get_ollama_llm()
+        chatbot = get_chatbot_executor(llm_model, system_message, CHECKPOINTER)
 
         super().__init__(
             llm=llm,
@@ -164,8 +159,8 @@ class ConfigurableRetrieval(RunnableBinding):
     ) -> None:
         others.pop("bound", None)
         retriever = get_retriever(assistant_id, thread_id)
-        llm = get_ollama_llm()
-        chatbot = get_retrieval_executor(llm, retriever, system_message, CHECKPOINTER)
+        llm_model = get_ollama_llm()
+        chatbot = get_retrieval_executor(llm_model, retriever, system_message, CHECKPOINTER)
         super().__init__(
             llm_type=llm_type,
             system_message=system_message,
@@ -194,7 +189,7 @@ chat_retrieval = (
 
 agent: Pregel = (
     ConfigurableAgent(
-        agent=AgentType.OLLAMA,
+        agent=LLMType.OLLAMA,
         tools=[],
         system_message=DEFAULT_SYSTEM_MESSAGE,
         retrieval_description=RETRIEVAL_DESCRIPTION,
