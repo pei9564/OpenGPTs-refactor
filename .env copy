@@ -1,0 +1,9 @@
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+SCARF_NO_ANALYTICS=true
+OLLAMA_BASE_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.2:1b
+EMBEDDING_MODEL=DMetaSoul/Dmeta-embedding-zh
+EMBEDDING_CACHE_FOLDER=/root/embedding-models

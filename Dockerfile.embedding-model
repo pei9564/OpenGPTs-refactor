@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+ARG EMBEDDING_MODEL
+ARG EMBEDDING_CACHE_FOLDER
+ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
+ENV EMBEDDING_CACHE_FOLDER=${EMBEDDING_CACHE_FOLDER}
+ENV EMBEDDING_MODEL_DIR=${EMBEDDING_CACHE_FOLDER}/models--${EMBEDDING_MODEL//\//--}
+
+RUN pip install --upgrade pip \
+    && pip install sentence-transformers langchain_community
+
+RUN if [ ! -d "$EMBEDDING_MODEL_DIR" ]; then \
+    mkdir -p "$EMBEDDING_MODEL_DIR" && \
+    python -c "from langchain_community.embeddings import HuggingFaceEmbeddings; \
+    HuggingFaceEmbeddings(model_name='$EMBEDDING_MODEL', cache_folder='$EMBEDDING_CACHE_FOLDER')"; \
+  fi
+
+CMD ["echo", "Container finished its task and will now exit."]

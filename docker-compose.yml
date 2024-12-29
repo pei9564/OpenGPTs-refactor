@@ -12,22 +12,30 @@ services:
     env_file:
       - .env
     volumes:
-      # - ./postgres-volume:/var/lib/postgresql/data
-      - postgres_data:/var/lib/postgresql/data  # 使用 Docker volume
+      - postgres_data:/var/lib/postgresql/data
 
   postgres-setup:
-    # image: migrate/migrate
-    build:   # 改用 Dockerfile 方式處理 migrations
+    build:   
       context: .
       dockerfile: Dockerfile.migration
     depends_on:
       postgres:
         condition: service_healthy
-    # volumes:
-        # - ./backend/migrations:/migrations
     env_file:
       - .env
     command: ["-path", "/migrations", "-database", "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable", "up"]
+
+  embedding-model-setup:
+    build:   
+      context: .
+      dockerfile: Dockerfile.embedding-model
+      args: 
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+        EMBEDDING_CACHE_FOLDER: ${EMBEDDING_CACHE_FOLDER}
+    volumes:
+      - embedding-models:${EMBEDDING_CACHE_FOLDER}
+    env_file:
+      - .env
 
   ollama:
     image: ollama/ollama
@@ -40,28 +48,27 @@ services:
       resources:
         limits:
           memory: 8G
-    # command: ["ollama", "run", "$OLLAMA_MODEL"]
-
 
   backend:
     container_name: opengpts-backend
     build:
       context: . 
       dockerfile: Dockerfile.backend
+    volumes:
+      - embedding-models:${EMBEDDING_CACHE_FOLDER}
     ports:
       - "8100:8000" 
     depends_on:
+      embedding-model-setup:
+        condition: service_completed_successfully
       postgres-setup:
         condition: service_completed_successfully
       ollama:
         condition: service_started
     env_file:
       - .env
-    # volumes:
-    #   - ./backend:/backend
     environment:
       POSTGRES_HOST: "postgres"
-
     command:
       - --reload
 
@@ -73,13 +80,12 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    # volumes:
-    #   - ./frontend/src:/frontend/src
     ports:
       - "5173:5173" 
     environment:
       VITE_BACKEND_URL: "http://backend:8000"
 
 volumes:
-  postgres_data:  # 定義 Docker volume
+  postgres_data:
   ollama: 
+  embedding-models:

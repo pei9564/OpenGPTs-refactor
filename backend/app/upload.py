@@ -85,7 +85,9 @@ def convert_ingestion_input_to_blob(file: UploadFile) -> Blob:
 def _init_vectorstore() -> PGVector:
     return PGVector(
              connection_string=PG_CONNECTION_STRING,
-             embedding_function=HuggingFaceEmbeddings(model_name="DMetaSoul/Dmeta-embedding-zh", cache_folder="./cache"),
+             embedding_function=HuggingFaceEmbeddings(
+                 model_name="DMetaSoul/Dmeta-embedding-zh", 
+                 cache_folder=os.environ.get("EMBEDDING_CACHE_FOLDER", "/root/embedding-models")),
              use_jsonb=True,
          )
 
